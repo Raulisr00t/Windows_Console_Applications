@@ -57,4 +57,4 @@ This project is licensed under the MIT License.
 Contributions are welcome! Please feel free to submit a pull request or report issues.
 
 ###Author
-RaulisR00t
+Raulisr00t
