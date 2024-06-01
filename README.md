@@ -50,11 +50,92 @@ If the program fails to retrieve the battery status, it will display an error me
 The program does not handle localization for different languages.
 The program assumes a simple 'Y/N' input for the shutdown prompt and does not handle other inputs robustly.
 The shutdown logic is a placeholder and does not actually perform a shutdown for safety reasons.
+
+###RunAs Utility
+This RunAs utility allows you to run a command as a different user by providing the username, domain (optional), and password.
+
+###Usage
+runas <[domain\username]> <command>
+###Example
+runas mydomain\myuser "C:\Path\To\Command.exe"
+###Features
+Prompts the user to enter a password securely.
+Supports specifying the domain and username in the format domain\username.
+Attempts to start the specified command with the provided credentials.
+###Code Overview
+Main Function
+The main function handles command-line arguments and prompts the user for a password. It then attempts to run the specified command with the provided credentials.
+int wmain(int argc, wchar_t* argv[]) {
+    if (argc < 3) {
+        wcerr << L"[-] Usage is: runas <[domain\\username]> <command>" << endl;
+        return 1;
+    }
+
+    wcout << L"Enter the password for " << argv[1] << ": ";
+
+    string password;
+    char ch;
+    while ((ch = _getch()) != '\r') {
+        if (ch == 8) {  // Handle backspace
+            if (!password.empty()) {
+                wcout << "\b \b";
+                password.pop_back();
+            }
+        }
+        else {
+            password += ch;
+        }
+    }
+    wcout << endl;  // Move to the next line after password input
+
+    // Convert password to wstring
+    wstring wpassword(password.begin(), password.end());
+    wstring wusername(argv[1]);
+
+    // Parse domain and username
+    wstring domain = L".";
+    size_t backslashPos = wusername.find(L'\\');
+    if (backslashPos != wstring::npos) {
+        domain = wusername.substr(0, backslashPos);
+        wusername = wusername.substr(backslashPos + 1);
+    }
+    wcout << L"Attempting to start " << argv[2] << " as user " << wusername << "..." << endl;
+
+    // Initialize structures
+    STARTUPINFOW si = { sizeof(si) };
+    PROCESS_INFORMATION pi;
+
+    // Create process with the provided credentials
+    DWORD lastError;
+    if (!CreateProcessWithLogonW(wusername.c_str(), domain.c_str(), wpassword.c_str(), LOGON_WITH_PROFILE, nullptr, argv[2], 0, nullptr, nullptr, &si, &pi)) {
+        lastError = GetLastError();
+        wcerr << L"[-] Error is: " << lastError << " [-]" << endl;
+        if (lastError == ERROR_LOGON_FAILURE) {
+            cerr << "[-] PASSWORD is not Correct [-]" << endl;
+            return 1;
+        }
+        return 1;
+    }
+
+    // Close handles
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+    return 0;
+}
+###Key Functions
+_getch(): Captures user input without displaying it on the screen, ensuring password security.
+CreateProcessWithLogonW: Creates a new process and logon session for the specified user.
+###Error Handling
+The program checks for the correct number of arguments and provides usage instructions if arguments are missing.
+It handles incorrect passwords by checking the ERROR_LOGON_FAILURE error code and displays an appropriate message.
+###Compilation
+To compile this program, use a C++ compiler that supports Windows API functions. For example, using Microsoft Visual C++:
+
+cl runas.cpp /link user32.lib advapi32.lib
 ###License
-This project is licensed under the MIT License.
+This project is licensed under the MIT License. See the LICENSE file for more details.
 
 ###Contributing
 Contributions are welcome! Please feel free to submit a pull request or report issues.
 
-###Author
-Raulisr00t
+###Author Raulisr00t
